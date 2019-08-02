@@ -1,0 +1,13 @@
+CC = g++
+CFLAGS = -Wall
+LDFLAGS = -I/usr/local/opt/gsl/include -L/usr/local/opt/gsl/lib -lgsl -lgslcblas -lm
+#LDFLAGS = -I/usr/local/Cellar/gsl/2.3/include -L/usr/local/Cellar/gsl/2.3/lib -lgsl -lgslcblas -lm
+#LDFLAGS = -I/usr/local/include -L/usr/local/lib -lgsl -lgslcblas -lm
+OBJS = system_bath_lag_des.o
+SOURCES = main_system_bath_lag_des.cpp
+
+all:
+	$(CC) $(SOURCES) $(LDFLAGS) -std=c++11 -o system_bath_lag_des
+
+clean:
+	rm -f *.o

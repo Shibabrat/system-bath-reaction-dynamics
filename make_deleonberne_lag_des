@@ -1,0 +1,14 @@
+#To run this file do >> make -f make_deleonberne_lag_des executable="test"
+CC = g++
+CFLAGS = -Wall
+LDFLAGS = -I/usr/local/opt/gsl/include -L/usr/local/opt/gsl/lib -lgsl -lgslcblas -lm
+#LDFLAGS = -I/usr/local/Cellar/gsl/2.3/include -L/usr/local/Cellar/gsl/2.3/lib -lgsl -lgslcblas -lm
+#LDFLAGS = -I/usr/local/include -L/usr/local/lib -lgsl -lgslcblas -lm
+OBJS = ${executable}.o
+SOURCES = main_deleonberne_lag_des.cpp
+
+all:
+	$(CC) $(SOURCES) $(LDFLAGS) -std=c++11 -o ${executable}
+
+clean:
+	rm -f *.o

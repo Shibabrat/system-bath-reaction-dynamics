@@ -1,0 +1,198 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 11.2' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[      5465,        190]
+NotebookOptionsPosition[      4746,        170]
+NotebookOutlinePosition[      5103,        186]
+CellTagsIndexPosition[      5060,        183]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"Eigenvalues", "[", 
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{"0", ",", "0", ",", 
+      RowBox[{"1", "/", "m"}], ",", "0"}], "}"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"0", ",", "0", ",", "0", ",", 
+      RowBox[{"1", "/", "mu"}]}], "}"}], ",", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"-", "2"}], "*", "D", "*", 
+       RowBox[{"lambda", "^", "2"}]}], ",", "0", ",", "0", ",", "0"}], "}"}], 
+    ",", 
+    RowBox[{"{", 
+     RowBox[{"0", ",", 
+      RowBox[{"2", "*", "epsilon", "*", 
+       RowBox[{"A", "^", "2"}]}], ",", "0", ",", "0"}], "}"}]}], "}"}], 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.762267997816703*^9, 3.7622680174428787`*^9}, {
+  3.7622680529791193`*^9, 
+  3.7622680983278313`*^9}},ExpressionUUID->"8503c6a9-d5f6-4738-99ba-\
+9e5776596664"],
+
+Cell[CellGroupData[{
+
+Cell[BoxData[{
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox[
+     RowBox[{
+      SqrtBox["2"], " ", "A", " ", 
+      SqrtBox["epsilon"]}], 
+     SqrtBox["mu"]]}], ",", 
+   FractionBox[
+    RowBox[{
+     SqrtBox["2"], " ", "A", " ", 
+     SqrtBox["epsilon"]}], 
+    SqrtBox["mu"]], ",", 
+   RowBox[{"-", 
+    FractionBox[
+     RowBox[{"\[ImaginaryI]", " ", 
+      SqrtBox["2"], " ", 
+      SqrtBox["D"], " ", "lambda"}], 
+     SqrtBox["m"]]}], ",", 
+   FractionBox[
+    RowBox[{"\[ImaginaryI]", " ", 
+     SqrtBox["2"], " ", 
+     SqrtBox["D"], " ", "lambda"}], 
+    SqrtBox["m"]]}], "}"}], "\[IndentingNewLine]", 
+ RowBox[{"Eigenvectors", "[", 
+  RowBox[{"{", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{"0", ",", "0", ",", 
+      RowBox[{"1", "/", "m"}], ",", "0"}], "}"}], ",", 
+    RowBox[{"{", 
+     RowBox[{"0", ",", "0", ",", "0", ",", 
+      RowBox[{"1", "/", "mu"}]}], "}"}], ",", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"-", "2"}], "*", "D", "*", 
+       RowBox[{"lambda", "^", "2"}]}], ",", "0", ",", "0", ",", "0"}], "}"}], 
+    ",", 
+    RowBox[{"{", 
+     RowBox[{"0", ",", 
+      RowBox[{"2", "*", "epsilon", "*", 
+       RowBox[{"A", "^", "2"}]}], ",", "0", ",", "0"}], "}"}]}], "}"}], 
+  "]"}]}], "Input",
+ CellChangeTimes->{{3.762268121542185*^9, 
+  3.762268126773026*^9}},ExpressionUUID->"b5081e48-1890-4091-88c2-\
+59e10b600b54"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"-", 
+    FractionBox[
+     RowBox[{
+      SqrtBox["2"], " ", "A", " ", 
+      SqrtBox["epsilon"]}], 
+     SqrtBox["mu"]]}], ",", 
+   FractionBox[
+    RowBox[{
+     SqrtBox["2"], " ", "A", " ", 
+     SqrtBox["epsilon"]}], 
+    SqrtBox["mu"]], ",", 
+   RowBox[{"-", 
+    FractionBox[
+     RowBox[{"\[ImaginaryI]", " ", 
+      SqrtBox["2"], " ", 
+      SqrtBox["D"], " ", "lambda"}], 
+     SqrtBox["m"]]}], ",", 
+   FractionBox[
+    RowBox[{"\[ImaginaryI]", " ", 
+     SqrtBox["2"], " ", 
+     SqrtBox["D"], " ", "lambda"}], 
+    SqrtBox["m"]]}], "}"}]], "Output",
+ CellChangeTimes->{
+  3.7622681276639853`*^9},ExpressionUUID->"469f83e9-8380-4d67-9df8-\
+15b231e2e2f6"],
+
+Cell[BoxData[
+ RowBox[{"{", 
+  RowBox[{
+   RowBox[{"{", 
+    RowBox[{"0", ",", 
+     RowBox[{"-", 
+      FractionBox["1", 
+       RowBox[{
+        SqrtBox["2"], " ", "A", " ", 
+        SqrtBox["epsilon"], " ", 
+        SqrtBox["mu"]}]]}], ",", "0", ",", "1"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{"0", ",", 
+     FractionBox["1", 
+      RowBox[{
+       SqrtBox["2"], " ", "A", " ", 
+       SqrtBox["epsilon"], " ", 
+       SqrtBox["mu"]}]], ",", "0", ",", "1"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     FractionBox["\[ImaginaryI]", 
+      RowBox[{
+       SqrtBox["2"], " ", 
+       SqrtBox["D"], " ", "lambda", " ", 
+       SqrtBox["m"]}]], ",", "0", ",", "1", ",", "0"}], "}"}], ",", 
+   RowBox[{"{", 
+    RowBox[{
+     RowBox[{"-", 
+      FractionBox["\[ImaginaryI]", 
+       RowBox[{
+        SqrtBox["2"], " ", 
+        SqrtBox["D"], " ", "lambda", " ", 
+        SqrtBox["m"]}]]}], ",", "0", ",", "1", ",", "0"}], "}"}]}], 
+  "}"}]], "Output",
+ CellChangeTimes->{
+  3.762268127667543*^9},ExpressionUUID->"8f263bbc-3941-4f22-8370-\
+242d464ceba3"]
+}, Open  ]],
+
+Cell[BoxData[""], "Input",
+ CellChangeTimes->{{3.765451977206184*^9, 
+  3.765452012004157*^9}},ExpressionUUID->"75d24cb3-c4e6-4b06-8e34-\
+5534edd7f8dc"]
+},
+WindowSize->{984, 908},
+WindowMargins->{{4, Automatic}, {Automatic, 7}},
+FrontEndVersion->"11.2 for Mac OS X x86 (32-bit, 64-bit Kernel) (September \
+10, 2017)",
+StyleDefinitions->"Default.nb"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 823, 24, 30, "Input",ExpressionUUID->"8503c6a9-d5f6-4738-99ba-9e5776596664"],
+Cell[CellGroupData[{
+Cell[1406, 48, 1384, 47, 87, "Input",ExpressionUUID->"b5081e48-1890-4091-88c2-59e10b600b54"],
+Cell[2793, 97, 717, 27, 64, "Output",ExpressionUUID->"469f83e9-8380-4d67-9df8-15b231e2e2f6"],
+Cell[3513, 126, 1062, 36, 106, "Output",ExpressionUUID->"8f263bbc-3941-4f22-8370-242d464ceba3"]
+}, Open  ]],
+Cell[4590, 165, 152, 3, 30, "Input",ExpressionUUID->"75d24cb3-c4e6-4b06-8e34-5534edd7f8dc"]
+}
+]
+*)
+
