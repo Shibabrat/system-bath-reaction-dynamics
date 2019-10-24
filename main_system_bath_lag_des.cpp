@@ -25,17 +25,30 @@ model of isomerization
 
 using namespace std;
 
-const int dim = 9; // number of odes + 1 for function M
 
 // Parameters of the system (De Leon-Berne model of isomerization)
-double MASS_A = 8.0, MASS_B = 8.0, EPSILON_S = 1.0, D_X = 10.0, E = 1.510;
+double MASS_A = 8.0, MASS_B = 8.0, EPSILON_S = 1.0, D_X = 10.0, E = 1.500;
 double Vdagger = 1.0, YW = 1.0/sqrt(2.0);
-double ZETA = 0.20, LAMBDA = 1.00;
+// double ZETA = 0.20, LAMBDA = 1.00;
 // double ZETA = 1.00, LAMBDA = 1.00;
-// double ZETA = 1.00, LAMBDA = 1.50;
-// double ZETA = 2.30, LAMBDA = 1.95;
+double ZETA = 1.00, LAMBDA = 1.50;
+double ZETA = 2.30, LAMBDA = 1.95;
+const int NS = 2;
 
 
+// Parameters of the bath modes, each bath introduces 2(= dimension of the system) more coordinates
+const int NB = 8;
+double MASS_BATH = 1.0;
+
+// vector<double> ETA_BATH(2*NB);
+// double ETA = 0.01, ETA = 0.01;
+// ETA_BATH[0] = 0.01;
+// ETA_BATH[1] = 0.01;
+double ETA = 0.01;
+
+double OMEGAC = 1.0;
+
+const int dim = 2*NS*(NB + 1) + 1; // number of odes + 1 for function M
 
 /* function prototypes */
 struct quadratic_params{
@@ -54,7 +67,7 @@ vector<double> get_energybounds_sosatyw(double E);
 double get_pxmax_sosatyw(double E, double guess_xcoord);
 double get_xbound_sosatyw(double E, double guess_xcoord);
 
-double deleonberne_get_py(double x, double y, double px, double E);
+double deleonberne_bath_get_py(double x, double y, vector<double> x_bath, vector<double> y_bath, double px, double E);
 int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau);
 double get_traj_funcM(vector<double> time_interval, vector<double> init_cond, int file_id);
 double gsl_integrate(vector<double> time_interval, vector<double> init_cond, double delta_t, int file_id);
@@ -71,12 +84,12 @@ int main(int argc, char *argv[]){
         int xRes = 100;
         int yRes = 100;
         double tau = 10.0;
-        puts("Calculating bounds of energy surface's intersection on the (x,px) section ...");
+        puts("Calculating bounds of energy surface's intersection on the (x,px) section");
         
         vector<double> xpx_energybounds = get_energybounds_sosatyw(E);
         // cout << xpx_energybounds[3] << endl;
 
-        int succ  = funcM_2dof(xRes, yRes, xpx_energybounds, tau);
+        // int succ  = funcM_2dof(xRes, yRes, xpx_energybounds, tau);
     }
     else if (argc == 2){ 
     // Obtain trajectory and function M for initial conditions from a file
@@ -149,7 +162,7 @@ int main(int argc, char *argv[]){
         int xRes = stoi(argv[1]);
         int yRes = stoi(argv[2]);
         double tau = stod(argv[3]);
-        puts("Calculating bounds of energy surface's intersection on the (x,px) section ...");
+        puts("Calculating bounds of energy surface's intersection on the (x,px) section");
         
         vector<double> xpx_energybounds = get_energybounds_sosatyw(E);
         // cout << xpx_energybounds[3] << endl;
@@ -166,7 +179,6 @@ int main(int argc, char *argv[]){
 
     return GSL_SUCCESS;
 }
-
 
 
 double quadratic (double x, void *params)
@@ -256,7 +268,10 @@ void Hderiv_fdf (double x, void *params, double *y, double *dy)
 
 
 /*
-Energy surface's intersection with the SOS at y = yw 
+Energy surface's intersection with the SOS (x,px) at y = yw, py = 0, computed 
+using only the system coordinates. For the system-bath model, we need to correct 
+this boundary. This is done using a fattening factor in the function to 
+calculate LD.
 */
 vector<double> get_energybounds_sosatyw(double E){
 
@@ -285,7 +300,7 @@ vector<double> get_energybounds_sosatyw(double E){
 double get_pxmax_sosatyw(double E, double guess_xcoord){
 
     int status;
-    int iter = 0, max_iter = 10;
+    int iter = 0, max_iter = 20;
     const gsl_root_fdfsolver_type *T;
     gsl_root_fdfsolver *s;
     double x0, x = guess_xcoord;
@@ -327,7 +342,19 @@ double get_pxmax_sosatyw(double E, double guess_xcoord){
     gsl_root_fdfsolver_free (s);
 
 
-    double pxMax = sqrt(2*MASS_A*(E - (D_X*pow((1 - exp(-LAMBDA * x)), 2.0) - exp(-ZETA * LAMBDA * x) + EPSILON_S)));
+    double bath_pot_yw = 0;
+    // vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
+    // for (int i = 0; i < NB; i++){
+    //     OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+    //     CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+    //     CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+    //     bath_pot_yw = bath_pot_yw + 0.5*( pow( (CX_BATH[i]*x)/OMEGA_BATH[i], 2.0 ) + 
+    //         pow((CY_BATH[i]*YW)/OMEGA_BATH[i], 2.0) );
+
+    // }
+
+    double pxMax = sqrt( 2*MASS_A*(E - (D_X*pow((1 - exp(-LAMBDA * x)), 2.0) - exp(-ZETA * LAMBDA * x) + EPSILON_S + bath_pot_yw)  )  );
 
     return pxMax;  
 }
@@ -381,24 +408,26 @@ double get_xbound_sosatyw(double E, double guess_xcoord){
 
 
 /*
-Obtain one of the momenta coordinate based on given values of other coordinates on the constant energy surface
+Obtain one of the momenta coordinate based on given values of other coordinates on the constant energy surface and all bath momenta is zero.
 */
-double deleonberne_get_py(double x, double y, double px, double E){
+double deleonberne_bath_get_py(double x, double y, vector<double> x_bath, vector<double> y_bath, double px, double E){
 
 
-    double MASS_bath = 1.0;
-    double ETA1 = 1.0, ETA2 = 1.0;
-    int NB = 2;
-    double OMEGAC = 1.0;
-    double OMEGA1 = OMEGAC*log((1 - 0.5)/NB); 
-    double CX1 = sqrt((2.0*ETA1*OMEGAC)/(M_PI*NB))*OMEGA1;
-    double CY1 = sqrt((2.0*ETA2*OMEGAC)/(M_PI*NB))*OMEGA1; 
+    double py = 0;    
+    double bath_pe = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
 
-    double py = 0;
-    double deleonberne_pot = D_X*pow((1 - exp(-LAMBDA*x)),2.0) + (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0))*exp(-ZETA*LAMBDA*x) + EPSILON_S;
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+        CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];     
 
-    if (E >= (deleonberne_pot + (1/(2.0*MASS_A))*pow(px,2.0)))
-        py = -sqrt( 2.0*MASS_B*(E - (deleonberne_pot + (1/(2.0*MASS_A))*pow(px,2.0)) ) );
+        bath_pe = bath_pe + 0.5*pow((OMEGA_BATH[i]*x_bath[i] - (CX_BATH[i]*x)/OMEGA_BATH[i]), 2.0) + 0.5*pow((OMEGA_BATH[i]*y_bath[i] - (CY_BATH[i]*y)/OMEGA_BATH[i]), 2.0);
+    }
+    double deleonberne_bath_pot = D_X*pow((1 - exp(-LAMBDA*x)),2.0) + (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0))*exp(-ZETA*LAMBDA*x) + EPSILON_S;
+
+    if (E >= (deleonberne_bath_pot + (1/(2.0*MASS_A))*pow(px,2.0)))
+        py = -sqrt( 2.0*MASS_B*(E - (deleonberne_bath_pot + (1/(2.0*MASS_A))*pow(px,2.0)) ) );
     else{
         py = NAN;
         // cout << "vy isn't real!" j<< endl;
@@ -409,15 +438,16 @@ double deleonberne_get_py(double x, double y, double px, double E){
    
 
 /*
-* Lagrangian descriptors for 2 DOF system (4D phase space) 
+* Lagrangian descriptors for NS DOF system and NB bath modes 
 */
 int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
 
-    // Fatten the domain to compute LD
-    double xMin = xpx_energybounds[0] + 0.01*xpx_energybounds[0]; 
-    double xMax = xpx_energybounds[1] + 0.01*xpx_energybounds[1];
-    double yMin = xpx_energybounds[2] + 0.01*xpx_energybounds[2];
-    double yMax = xpx_energybounds[3] + 0.01*xpx_energybounds[3];;
+    // Fatten the domain to compute LD, factor is larger than the case for 
+    // system only.
+    double xMin = xpx_energybounds[0] + 0.2*xpx_energybounds[0]; 
+    double xMax = xpx_energybounds[1] + 0.2*xpx_energybounds[1];
+    double yMin = xpx_energybounds[2] + 0.2*xpx_energybounds[2];
+    double yMax = xpx_energybounds[3] + 0.2*xpx_energybounds[3];;
     double ySlice = YW;
     cout << xMin << " " << xMax << " " << yMin << " " << yMax << endl;
 
@@ -425,6 +455,8 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
 
     double q1, q2, p1, p2; // 2-DOF
     double lam = 1;
+
+
 
     // Define domain parameters: (x,y) -> (x, px)
     // int xRes = 100;
@@ -458,14 +490,24 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
 
     
     vector<double> init_cond(dim);
+    vector<double> x_bath(NB);
+    vector<double> y_bath(NB);
 
     // Writing domain and LD parameters
-    ofstream params_dataOut;
-    params_dataOut.open("params_deleonberne_M" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + ".txt", ofstream::out | ofstream::trunc);
+    ofstream params_LD_dataOut;
+    params_LD_dataOut.open("params_LD_systembath_M" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + "_NB" + to_string(int(NB)) + ".txt", ofstream::out | ofstream::trunc);
 
-    params_dataOut << std::fixed << std::setprecision(5) << setw(5) << xMin << "\t" << xMax << "\t" << delta_x << "\t" << yMin << "\t" << yMax << "\t" << delta_y << "\t" << t0 << "\t" << tau << "\t" << delta_t << "\t" << E << "\n";
+    params_LD_dataOut << std::fixed << std::setprecision(5) << setw(5) << xMin << "\t" << xMax << "\t" << delta_x << "\t" << yMin << "\t" << yMax << "\t" << delta_y << "\t" << t0 << "\t" << tau << "\t" << delta_t << "\t" << E << "\n";
 
-    params_dataOut.close();
+    params_LD_dataOut.close();
+
+    ofstream params_model_dataOut;
+    params_model_dataOut.open("params_model_systembath_M" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + "_NB" + to_string(int(NB)) + ".txt", ofstream::out | ofstream::trunc);
+
+    params_model_dataOut << std::fixed << std::setprecision(5) << setw(5) << 
+    MASS_A << "\t" << MASS_B << "\t" << EPSILON_S << "\t" << D_X << "\t" << Vdagger << "\t" << YW << "\t" << ZETA << "\t" << LAMBDA << "\t" << MASS_BATH << "\t" << ETA << "\t" << ETA << "\t" << NB << "\t" << OMEGAC << "\n";
+
+    params_model_dataOut.close();
 
     
     clock_t timer;
@@ -480,17 +522,33 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
             xMesh[i][j] = init_cond[0];
             yMesh[i][j] = init_cond[2];
 
-            // 2-DOF: Generate the other two coordinates using the constraint that the LD is being computed on a section and energy is conserved
+            // NS*(NB + 1) DOF: Generate the other two coordinates using the constraint that the LD is being computed on a section and energy is conserved
             init_cond[0] = xMin + j*delta_x;
             init_cond[1] = ySlice;
-            init_cond[2] = 0.0;
-            init_cond[3] = 0.0;
-            init_cond[4] = yMin + i*delta_y;
+            // init_cond[2] = 0.0;
+            // init_cond[3] = 0.0;
+
+            for (int i = 0; i < NB; i++){
+                x_bath[i] = 0.0;
+                y_bath[i] = 0.0;
+
+                init_cond[NS + i] = x_bath[i];
+                init_cond[NS + NB + i] = y_bath[i];
+                init_cond[2*NS + NS*NB + i] = 0.0;
+                init_cond[2*NS + NS*NB + i] = 0.0;
+
+            }
+            init_cond[NS*(NB + 1)] = yMin + i*delta_y;
+            // init_cond[4] = yMin + i*delta_y;
             // init_cond[5] = py;
-            init_cond[6] = 0.0;
-            init_cond[7] = 0.0;
-            init_cond[8] = 0.0; // initialize the value of 
-            double momenta = deleonberne_get_py(init_cond[0], init_cond[1], init_cond[2], E);
+            // init_cond[6] = 0.0;
+            // init_cond[7] = 0.0;
+            init_cond[dim - 1] = 0.0; // initialize the value of function M
+            double momenta = deleonberne_bath_get_py(init_cond[0], init_cond[1], x_bath, 
+                y_bath, init_cond[4], E);
+
+
+
             if (isnan(momenta)){
                 forwM[i][j] = NAN;
                 backM[i][j] = NAN;
@@ -507,8 +565,8 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
                 double escape_timeF = t0 + tau;
                 time_interval[0] = t0;
                 time_interval[1] = t0 + tau;
-                M_forw = gsl_integrate(time_interval, init_cond, delta_t, ic_id);
-                // gsl_LD_escape(time_interval, init_cond, delta_t, ic_id, M_forw, escape_timeF);
+                // M_forw = gsl_integrate(time_interval, init_cond, delta_t, ic_id);
+                gsl_LD_escape(time_interval, init_cond, delta_t, ic_id, M_forw, escape_timeF);
 
                 // Solve for backward trajectory
                 // Integrate from t_0 to t_0 - tau to obtain backward function M
@@ -516,10 +574,10 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
                 double escape_timeB = t0 - tau;
                 time_interval[0] = t0;
                 time_interval[1] = t0 - tau;
-                M_back = gsl_integrate(time_interval, init_cond, -delta_t, ic_id);
-                // gsl_LD_escape(time_interval, init_cond, -delta_t, ic_id, M_back, escape_timeB);
+                // M_back = gsl_integrate(time_interval, init_cond, -delta_t, ic_id);
+                gsl_LD_escape(time_interval, init_cond, -delta_t, ic_id, M_back, escape_timeB);
 
-                // cout << M_forw << " " << M_back << endl;
+                cout << M_forw << " " << M_back << endl;
                 // cout << escape_timeB << " " << escape_timeF << endl;
 
                 // Save the forward and backward separately
@@ -539,7 +597,7 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
 
 
     ofstream Mf_dataOut;
-    Mf_dataOut.open("deleonberne_forwM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + ".txt", ofstream::out | ofstream::trunc);
+    Mf_dataOut.open("systembath_forwM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + "_NB" + to_string(int(NB)) + ".txt", ofstream::out | ofstream::trunc);
     for (int i = 0; i < yRes + 1; i++){
         for (int k = 0; k < xRes; k++)
             Mf_dataOut << std::fixed << std::setprecision(15) << setw(15) << forwM[i][k] << "\t";
@@ -549,7 +607,7 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
     Mf_dataOut.close();
 
     ofstream Mb_dataOut;
-    Mb_dataOut.open("deleonberne_backM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + ".txt", ofstream::out | ofstream::trunc);
+    Mb_dataOut.open("systembath_backM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + "_NB" + to_string(int(NB)) + ".txt", ofstream::out | ofstream::trunc);
     for (int i = 0; i < yRes + 1; i++){
         for (int k = 0; k < xRes; k++)
             Mb_dataOut << std::fixed << std::setprecision(15) << setw(15) << backM[i][k] << "\t";
@@ -795,7 +853,7 @@ double gsl_integrate(vector<double> time_interval, vector<double> init_cond, dou
 
     /* load values into the my_system structure */
     // my_system.function = auto_rot_saddle_pt;	/* the right-hand-side functions dy[i]/dt */
-    my_system.function = deleonberne_rhs;
+    my_system.function = deleonberne_bath_rhs;
     my_system.jacobian = NULL;	/* the Jacobian df[i]/dy[j] */
     my_system.dimension = dim;	/* number of diffeq's */
     my_system.params = &mu;	    /* parameters to pass to rhs and jacobian */
@@ -953,7 +1011,7 @@ int gsl_LD_escape(vector<double> time_interval, vector<double> init_cond, double
 
     /* load values into the my_system structure */
     // my_system.function = auto_rot_saddle_pt;	/* the right-hand-side functions dy[i]/dt */
-    my_system.function = deleonberne_rhs;
+    my_system.function = deleonberne_bath_rhs;
     my_system.jacobian = NULL;	/* the Jacobian df[i]/dy[j] */
     my_system.dimension = dim;	/* number of diffeq's */
     my_system.params = &mu;	    /* parameters to pass to rhs and jacobian */
@@ -1018,22 +1076,11 @@ int gsl_LD_escape(vector<double> time_interval, vector<double> init_cond, double
 
         // Saving trajectory to file
         // int succ = write_matrix(trajectory, tmax, mu, file_id);
-
-        if (y_start[1] < -8.0 || y_start[1] > -6.0 || y_start[0] > 6.5 || y_start[0] < 4.5) {
+        
+        if (y_start[1] < -YW) {
             // puts("Escape event has occurred.");
             break;
-        } // E = 15.250
-
-        
-        // if (y_start[1] < -10.0 || y_start[1] > -5.0 || y_start[0] > 8.0 || y_start[0] < 3.0) {
-        //     // puts("Escape event has occurred.");
-        //     break;
-        // } // E = 16.250
-
-        // if (fabs(y_start[1]) > 10e3 || fabs(y_start[0]) > 10e3) {
-        //     // puts("Escape event has occurred.");
-        //     break;
-        // } // Escape to infinity
+        } // well isomer B
         
         k = k + 1;
         t_next = t_next + delta_t;
@@ -1118,55 +1165,84 @@ int deleonberne_rhs(double t, const double posIn[], double velOut[], void *param
 
 /*
     * Velocity field for dynamics governed by De Leon-Berne system in a bath
-    * Phase space is 8 dimensional
+    * For N_B bath DoF coupled with each N_S system DoF, the phase space is  
+    * 2N_B(N_S + 1) dimensional
 */
 int deleonberne_bath_rhs(double t, const double posIn[], double velOut[], void *params){
 
-    // double De = 100, k = 200, re = 1;
-    double MASS_bath = 1.0;
-    double ETA1 = 1.0, ETA2 = 1.0;
-    int NB = 2;
-    double OMEGAC = 1.0;
-    double OMEGA1 = OMEGAC*log((1 - 0.5)/NB); 
-    double CX1 = sqrt((2.0*ETA1*OMEGAC)/(M_PI*NB))*OMEGA1;
-    double CY1 = sqrt((2.0*ETA2*OMEGAC)/(M_PI*NB))*OMEGA1; 
-
+    // Parameters of the system-bath model
     double b = *(double *) params;
+
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
+    vector<double> dV_dxj(NB), dV_dyj(NB);
+
     double x, y, x1, y1, px, py, px1, py1;
-    double dV_dx, dV_dy, dV_dxj, dV_dyj;
+    vector<double> x_bath(NB), y_bath(NB), px_bath(NB), py_bath(NB);
+    double dV_dx, dV_dy;
     double p = 0.5;
 
+    // system dynamics
     x = posIn[0];
     y = posIn[1];
-    x1 = posIn[2];
-    y1 = posIn[3];
+    px = posIn[NS*(NB + 1)];
+    py = posIn[NS*(NB + 1) + 1];
+    
+    // x1 = posIn[2];
+    // y1 = posIn[3];
 
-    dV_dx = -( 
-        2*D_X*LAMBDA*exp(-LAMBDA*x)*(exp(-LAMBDA*x) - 1) + 
-        (Vdagger/pow(YW,4.0))*ZETA*LAMBDA*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0))*exp(-ZETA*LAMBDA*x) + (CX1/OMEGA1)*( OMEGA1*x1 - (CX1*x)/OMEGA1 ) 
-        );
+    dV_dx = -( 2*D_X*LAMBDA*exp(-LAMBDA*x)*(exp(-LAMBDA*x) - 1) + 
+        (Vdagger/pow(YW,4.0))*ZETA*LAMBDA*pow(y,2.0)*(pow(y,2.0) - 
+        2.0*pow(YW,2.0))*exp(-ZETA*LAMBDA*x) );
 
-    dV_dy = ( 
-        4*((Vdagger/pow(YW,4.0))*y*( pow(y,2.0) - pow(YW,2.0) )*exp(-ZETA*LAMBDA*x)) - 
-        (CY1/OMEGA1)*( OMEGA1*y1 - (CY1*y)/OMEGA1 )
-        );
-
-    dV_dxj = OMEGA1*( OMEGA1*x1 - (CX1*x)/OMEGA1 );
-
-    dV_dyj = OMEGA1*( OMEGA1*y1 - (CY1*y)/OMEGA1 );
+    dV_dy = ( 4*((Vdagger/pow(YW,4.0))*y*( pow(y,2.0) - pow(YW,2.0) )*exp(-ZETA*LAMBDA*x)) );
 
 
-    velOut[0] = (posIn[4]/MASS_A);
-    velOut[1] = (posIn[5]/MASS_B);
-    velOut[2] = (posIn[5]/MASS_bath); 
-    velOut[3] = (posIn[5]/MASS_bath);
-    velOut[4] = -(dV_dx);
-    velOut[5] = -(dV_dy);
-    velOut[6] = -(dV_dxj);
-    velOut[7] = -(dV_dyj); 
-    velOut[8] = 0;
+    // velOut[2] = (posIn[6]/MASS_BATH); 
+    // velOut[3] = (posIn[7]/MASS_BATH);
+    // velOut[4] = -(dV_dx);
+    // velOut[5] = -(dV_dy);
+    // velOut[6] = -(dV_dxj);
+    // velOut[7] = -(dV_dyj); 
+
+    for (int i = 0; i < NB; i++ ){
+
+        // bath position coordinates
+        x_bath[i] = posIn[NS + i];
+        y_bath[i] = posIn[NS + NB + i];
+
+        velOut[NS + i] = posIn[NS*(NB + 2) + i]/MASS_BATH;
+        velOut[NS + NB + i] = posIn[NS*(NB + 2) + NB + i]/MASS_BATH; 
+
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+        CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i]; 
+
+        
+        // system momenta coordinates
+        velOut[NS*(NB + 1)] = (CX_BATH[i]/OMEGA_BATH[i])*( OMEGA_BATH[i]*x_bath[i] - (CX_BATH[i]*x)/OMEGA_BATH[i] );
+
+        velOut[NS*(NB + 1) + 1] = (CY_BATH[i]/OMEGA_BATH[i])*( OMEGA_BATH[i]*y_bath[i] - (CY_BATH[i]*y)/OMEGA_BATH[i] );
+
+
+        // bath momenta coordinates
+        dV_dxj[i] = OMEGA_BATH[i]*( OMEGA_BATH[i]*x_bath[i] - (CX_BATH[i]*x)/OMEGA_BATH[i] );
+
+        dV_dyj[i] = OMEGA_BATH[i]*( OMEGA_BATH[i]*y_bath[i] - (CY_BATH[i]*y)/OMEGA_BATH[i] );
+
+
+        velOut[NS*(NB + 2) + i] = -dV_dxj[i];
+        velOut[NS*(NB + 2) + NB + i] = -dV_dyj[i];
+
+    }
+
+    velOut[0] = (px/MASS_A);
+    velOut[1] = (py/MASS_B);
+    velOut[NS*(NB + 1)] = -dV_dx + velOut[NS*(NB + 1)];
+    velOut[NS*(NB + 1) + 1] = -dV_dy + velOut[NS*(NB + 1) + 1];
+
+    velOut[dim - 1] = 0;
     for (int i = 0; i < dim - 1; i++){
-        velOut[8] += pow(abs(velOut[i]),p);
+        velOut[dim - 1] += pow(abs(velOut[i]),p);
     }
 
     // printf("%f \t %f \t %f \t %f\n", velOut[0], velOut[1], velOut[2], velOut[3]);
@@ -1186,3 +1262,169 @@ int deleonberne_bath_rhs(double t, const double posIn[], double velOut[], void *
 
 
 
+
+
+
+
+
+/*
+
+double quadratic (double x, void *params)
+{
+    struct quadratic_params *p = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+
+    double bath_pot_yw = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+        CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        bath_pot_yw = bath_pot_yw + 0.5*( pow( (CX_BATH[i]*x)/OMEGA_BATH[i], 2.0 ) + 
+            pow((CY_BATH[i]*YW)/OMEGA_BATH[i], 2.0) );
+
+    }
+
+    return (E - (D_X*pow((1 - exp(-LAMBDA * x)), 2.0) - exp(-ZETA * LAMBDA * x) + EPSILON_S + bath_pot_yw));
+}
+
+double quadratic_deriv (double x, void *params)
+{
+    struct quadratic_params *p = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+
+    double dbath_pot_yw_dx = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        dbath_pot_yw_dx = dbath_pot_yw_dx + x*pow((CX_BATH[i]/OMEGA_BATH[i]), 2.0);
+
+    }
+
+    return -(2.0*LAMBDA*D_X*exp(-LAMBDA * x)*(1 - exp(-LAMBDA * x)) + exp(-ZETA * LAMBDA * x)) + dbath_pot_yw_dx;
+}
+
+void quadratic_fdf (double x, void *params, double *y, double *dy)
+{
+    struct quadratic_params *p
+        = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+
+    double bath_pot_yw = 0;
+    double dbath_pot_yw_dx = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+        CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        bath_pot_yw = bath_pot_yw + 0.5*( pow( (CX_BATH[i]*x)/OMEGA_BATH[i], 2.0 ) + 
+            pow((CY_BATH[i]*YW)/OMEGA_BATH[i], 2.0) );
+
+        dbath_pot_yw_dx = dbath_pot_yw_dx + x*pow((CX_BATH[i]/OMEGA_BATH[i]), 2.0);
+
+    }
+
+    *y = (E - (D_X*pow((1 - exp(-LAMBDA * x)), 2.0) - exp(-ZETA * LAMBDA * x) + EPSILON_S + bath_pot_yw ));
+    *dy = -(2.0*LAMBDA*D_X*exp(-LAMBDA * x)*(1 - exp(-LAMBDA * x)) + exp(-ZETA * LAMBDA * x)) + dbath_pot_yw_dx;
+}
+
+
+double Hderiv (double x, void *params)
+{
+    struct quadratic_params *p = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+
+    double dbath_pot_yw_dx = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        dbath_pot_yw_dx = dbath_pot_yw_dx + x*pow((CX_BATH[i]/OMEGA_BATH[i]), 2.0);
+
+    }
+
+    return -(2.0*LAMBDA*D_X*exp(-LAMBDA * x)*(1 - exp(-LAMBDA * x)) + exp(-ZETA * LAMBDA * x)) + dbath_pot_yw_dx;
+}
+
+
+double Hderiv_deriv (double x, void *params)
+{
+    struct quadratic_params *p = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+
+    double d2bath_pot_yw_dx2 = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        d2bath_pot_yw_dx2 = d2bath_pot_yw_dx2 + pow((CX_BATH[i]/OMEGA_BATH[i]), 2.0);
+
+    }
+
+
+    return (2.0*pow(LAMBDA,2.0)*D_X*exp(-LAMBDA * x)*(exp(-LAMBDA * x) - LAMBDA*(1 - exp(-LAMBDA * x))) - pow((ZETA * LAMBDA),2.0)*exp(-ZETA * LAMBDA * x)) + d2bath_pot_yw_dx2;
+}
+
+void Hderiv_fdf (double x, void *params, double *y, double *dy)
+{
+    struct quadratic_params *p
+        = (struct quadratic_params *) params;
+
+    double E = p->E;
+    double D_X = p->D_X; 
+    double ZETA = p->ZETA;
+    double LAMBDA = p->LAMBDA;
+    double EPSILON_S = p->EPSILON_S;
+    
+    double dbath_pot_yw_dx = 0;
+    double d2bath_pot_yw_dx2 = 0;
+    vector<double> OMEGA_BATH(NB), CX_BATH(NB), CY_BATH(NB);
+    for (int i = 0; i < NB; i++){
+        OMEGA_BATH[i] = -OMEGAC*log(((i+1) - 1.0/2.0)/(2*NB)); 
+        CX_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+        CY_BATH[i] = sqrt((2.0*ETA*OMEGAC)/(M_PI*NB))*OMEGA_BATH[i];
+
+        dbath_pot_yw_dx = dbath_pot_yw_dx + 0.5*( pow( (CX_BATH[i]*x)/OMEGA_BATH[i], 2.0 ) + 
+            pow((CY_BATH[i]*YW)/OMEGA_BATH[i], 2.0) );
+
+        d2bath_pot_yw_dx2 = d2bath_pot_yw_dx2 + x*pow((CX_BATH[i]/OMEGA_BATH[i]), 2.0);
+
+    }
+
+    *y = -(2.0*LAMBDA*D_X*exp(-LAMBDA * x)*(1 - exp(-LAMBDA * x)) + exp(-ZETA * LAMBDA * x)) + dbath_pot_yw_dx;
+    *dy = (2.0*pow(LAMBDA,2.0)*D_X*exp(-LAMBDA * x)*(exp(-LAMBDA * x) - LAMBDA*(1 - exp(-LAMBDA * x))) - pow((ZETA * LAMBDA),2.0)*exp(-ZETA * LAMBDA * x)) + d2bath_pot_yw_dx2;
+}
+
+*/

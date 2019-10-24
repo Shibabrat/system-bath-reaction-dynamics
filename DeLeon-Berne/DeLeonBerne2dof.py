@@ -7,6 +7,8 @@ Created on Sat Mar 15 9:02:17 2019
 """
 
 import numpy as np
+import scipy as sp
+from scipy.optimize import fsolve
 #import matplotlib.pyplot as plt
 import matplotlib as mpl
 
@@ -19,6 +21,66 @@ mpl.rcParams['axes.labelsize'] = fal
 
 
 #from scipy.optimize import fsolve
+
+
+# Switch cases for different parameter values
+
+# Fig. 3-A1
+# ALPHA = 0.20;
+# LAMBDA = 1.00;
+
+# Fig. 3-A2
+# ALPHA = 1.00;
+# LAMBDA = 1.00;
+
+# Fig. 3-B1
+# ALPHA = 1.00;
+# LAMBDA = 1.30;
+
+# Fig. 3-B2
+# ALPHA = 1.00;
+# LAMBDA = 1.5;
+
+# % Fig. 3-C1
+# % ALPHA = 1.00;
+# % LAMBDA = 2.00;
+
+# % Fig. 3-C2
+# ALPHA = 2.30;
+# LAMBDA = 1.95;
+
+def set_parameters(label):
+    
+    # ordering of the parameters: mass A, mass B, epsilon, Dx, alpha (z in paper), lambd
+    massA = 8; massB = 8; EPSILON = 1.0; Dx = 10.0;
+    
+    if label == 'fig3A1/':
+        ALPHA = 0.20;
+        LAMBDA = 1.00;
+    elif label == 'fig3A2/':
+        ALPHA = 1.00;
+        LAMBDA = 1.00;
+    elif label == 'fig3B1/':
+        ALPHA = 1.00;
+        LAMBDA = 1.30;
+    elif label == 'fig3B2/':
+        ALPHA = 1.00;
+        LAMBDA = 1.50;
+    elif label == 'fig3C1/':
+        ALPHA = 1.00;
+        LAMBDA = 2.00;
+    elif label == 'fig3C2/':
+        ALPHA = 2.30;
+        LAMBDA = 1.95;
+    elif label == 'ZETA0.00-LAMBDA1.00/':
+        ALPHA = 0.00;
+        LAMBDA = 1.00;
+    else:
+        print('Incompatible arguments, check label string')
+        
+    params =  [massA, massB, EPSILON, Dx, ALPHA, LAMBDA]
+    
+    return params
 
 def V_DB(x, y, params_pe):
     """
@@ -45,6 +107,9 @@ def V_DB(x, y, params_pe):
 #     print(np.size(vy))
 #     print(x,y,vyx)
     
+    if np.size(x) == 1:
+        pe = pe[0,0]
+
     return pe
 
 def get_total_energy(q, p, params_pe, params_ke):
@@ -97,11 +162,12 @@ def get_Hills_Region(xVec, yVec, deltaE):
 
 
 
-def vec_field_DB(states, *params):
+def vec_field_DB(t, states, *params):
     
     massA, massB, epsilon, Dx, alpha, lambd = params
     
     q1, q2, p1, p2 = states
+    
     q1Dot = p1/massA
     q2Dot = p2/massB
     p1Dot = 2*Dx*lambd*(np.exp(-lambd*q1) - 1)*np.exp(-lambd*q1) + \
@@ -128,5 +194,76 @@ def get_area_closed_curve(inCurve):
     
     return np.abs(curveArea)
 
+
+def px_zero(x, *args):
+    """
+    function to solve minimum and maximum value of x-coordinate on the 
+    surface (x,px) with y = yw, px = py = 0
+    """
+
+    Eval, EPSILON, Dx, ALPHA, LAMBDA = args[0:]
+    
+    H = lambda x: (Dx*(1 - np.exp(-LAMBDA*x))**2 - np.exp(-ALPHA*LAMBDA*x) + EPSILON)
+    
+    return (Eval - H(x))
+
+def get_energybndry_intersect_sos(params, deltaEnergy, printFlag = False):
+    
+    massA, massB, EPSILON, Dx, ALPHA, LAMBDA = params 
+    saddleEnergy = EPSILON
+    
+    totalEnergy = saddleEnergy + deltaEnergy
+    
+    H = lambda x: (Dx*(1 - np.exp(-LAMBDA*x))**2 - np.exp(-ALPHA*LAMBDA*x) + EPSILON)
+        
+    # minumum and maximum of the energy boundary's x coordinate on the sos
+    xMax = fsolve(px_zero,  0.5, args = (totalEnergy,EPSILON, Dx, ALPHA, LAMBDA))
+    xMin = fsolve(px_zero,  -1, args = (totalEnergy,EPSILON, Dx, ALPHA, LAMBDA))
+#     print(xMin, xMax)
+    
+    xGrid = np.linspace(xMin,xMax,1000)
+    
+    pxGridPos = np.zeros(np.size(xGrid))
+    pxGridNeg = np.zeros(np.size(xGrid))
+    
+    for i in range(np.size(xGrid)):
+        if (totalEnergy > H(xGrid[i])):
+            pxGridPos[i] = sp.sqrt((2*massA)*(totalEnergy - H(xGrid[i])))
+            
+            pxGridNeg[i] = -sp.sqrt((2*massA)*(totalEnergy - H(xGrid[i])))
+            
+    
+#     print('Excess energy:', deltaEnergy)    
+    
+    if printFlag:
+        fig = plt.figure(figsize=(6, 6))
+        ax = fig.gca()
+
+    #     ax = axisH
+    #     plt.rcParams['axes.labelweight'] = 'bold'
+    #     plt.rcParams['ytick.major.size'] = 5    
+    #     plt.rcParams['xtick.major.size'] = 5
+
+    #    ax.xaxis.set_ticks([0, 5, 10, 15])
+    #    ax.yaxis.set_ticks(np.linspace(-80,80,9,endpoint=True,dtype=int))
+
+    #     ax.axis([0, rMax + 1, -80, 80])
+    #     ax.set_xticklabels(ax.get_xticks(), weight='bold')
+    #     ax.set_yticklabels(ax.get_yticks(), weight='bold')
+
+        ax.plot(xGrid, pxGridPos, linewidth = 2, color = 'm')
+        ax.plot(xGrid, pxGridNeg, linewidth = 2, color = 'm')
+
+        ax.set_xlabel(r'$x$', fontsize = 25)
+        ax.set_ylabel(r'$p_x$', fontsize = 25)
+        plt.tick_params(axis = 'both', which = 'major', labelsize = 15)
+        
+        
+    xGrid = np.append(xGrid, np.flip(xGrid,0))
+    pxGrid = np.append(pxGridPos, np.flip(pxGridNeg,0))
+    
+#     print(np.shape(xGrid))
+        
+    return np.array([xGrid,pxGrid]).T
 
 

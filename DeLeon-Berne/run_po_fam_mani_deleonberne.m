@@ -29,12 +29,12 @@ D_X = 10.0;
 % LAMBDA = 1.00;
 
 % Fig. 3-B2
-ALPHA = 1.00;
-LAMBDA = 1.5;
+% ALPHA = 1.00;
+% LAMBDA = 1.5;
 
 % Fig. 3-C2
-% ALPHA = 2.30;
-% LAMBDA = 1.95;
+ALPHA = 2.30;
+LAMBDA = 1.95;
 
 
 parameters = [MASS_A MASS_B EPSILON_S D_X LAMBDA ALPHA];
@@ -46,7 +46,7 @@ eSaddle = get_total_energy_deleonberne([eqPt',0,0], parameters); % energy of the
 
 %% 
 
-nFam = 100; % use nFam = 10 for low energy
+nFam = 25; % use nFam = 10 for low energy
 
 % first two amplitudes for continuation procedure to get p.o. family
 Ax1  = 2.e-5; % initial amplitude (1 of 2) values to use: 2.e-3
@@ -106,7 +106,7 @@ po_target_file = ['x0po_T_energyPO_eqPt',num2str(eqNum), ...
                     
 %% Setting parameters for the globalization of manifolds
 
-n_mfd_traj = 10000;
+n_mfd_traj = 25;
 % deltaE = 0.125;
 
 frac = 0;
@@ -125,7 +125,7 @@ x0po = importdata(data_path);
 TPOFam = x0po(:,5); 
 ePOFam = x0po(:,6);
 nMed = size(x0po,1);
-tmfd = 30;%12*TPOFam(nMed);
+tmfd = 10*TPOFam(nMed);
 
 %% % Stable manifold
 
@@ -140,10 +140,10 @@ tic;
 smaniRuntime = toc
 
 energyTube = ePOFam(nMed) ;
-title(['Energy of the tube manifold:', num2str(energyTube)]);
+% title(['Energy of the tube manifold:', num2str(energyTube)]);
 
 
-%%% Unstable manifold
+%% Unstable manifold
 
 % dir = 1;
 % tic;    
@@ -173,6 +173,30 @@ energyTube = ePOFam(nMed) ;
 
 
 %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

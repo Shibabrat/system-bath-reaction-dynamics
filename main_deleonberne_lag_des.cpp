@@ -28,17 +28,23 @@ const int dim = 5; // number of odes + 1 for function M
 // size_t dim = 4;
 
 // Parameters
-double MASS_A = 8.0, MASS_B = 8.0, EPSILON_S = 1.0, D_X = 10.0, E = 6.000;
+double MASS_A = 8.0, MASS_B = 8.0, EPSILON_S = 1.0, D_X = 10.0, E = 1.100;
 double Vdagger = 1.0, YW = 1.0/sqrt(2.0);
-double ZETA = 0.20, LAMBDA = 1.00;
+// double ZETA = 0.20, LAMBDA = 1.00;
 // double ZETA = 1.00, LAMBDA = 1.00;
-// double ZETA = 1.00, LAMBDA = 1.50;
-// double ZETA = 2.30, LAMBDA = 1.95;
+// double ZETA = 1.00, LAMBDA = 1.50; // fig:3B2
+double ZETA = 2.30, LAMBDA = 1.95;
+
 
 /* function prototypes */
 struct quadratic_params{
     double E, D_X, ZETA, LAMBDA, EPSILON_S;
 };
+
+struct quadratic_y_params{
+    double E, Vdagger, YW, EPSILON_S;
+};
+
 
 double quadratic (double x, void *params);
 double quadratic_deriv (double x, void *params);
@@ -48,12 +54,29 @@ double Hderiv (double x, void *params);
 double Hderiv_deriv (double x, void *params);
 void Hderiv_fdf (double x, void *params, double *y, double *dy);
 
+double quadratic_y (double y, void *params);
+double quadratic_y_deriv (double y, void *params);
+void quadratic_y_fdf (double y, void *params, double *x, double *dx);
+
+double Hderiv_y (double y, void *params);
+double Hderiv_y_deriv (double y, void *params);
+void Hderiv_y_fdf (double y, void *params, double *x, double *dx);
+
+
 vector<double> get_energybounds_sosatyw(double E);
 double get_pxmax_sosatyw(double E, double guess_xcoord);
 double get_xbound_sosatyw(double E, double guess_xcoord);
 
+vector<double> get_energybounds_sosatx0(double E);
+double get_pymax_sosatx0(double E, double guess_ycoord);
+double get_ybound_sosatx0(double E, double guess_ycoord);
+
 double deleonberne_get_py(double x, double y, double px, double E);
-int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau);
+double deleonberne_get_px(double x, double y, double py, double E);
+
+int funcM_xpx_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau);
+int funcM_ypy_2dof(int xRes, int yRes, vector<double> ypy_energybounds, double tau);
+
 double get_traj_funcM(vector<double> time_interval, vector<double> init_cond, int file_id);
 double gsl_integrate(vector<double> time_interval, vector<double> init_cond, double delta_t, int file_id);
 int gsl_LD_escape(vector<double> time_interval, vector<double> init_cond, double delta_t, int file_id, double& Mt, double& escape_time);
@@ -68,12 +91,15 @@ int main(int argc, char *argv[]){
         int xRes = 100;
         int yRes = 100;
         double tau = 10.0;
-        puts("Calculating bounds of energy surface's intersection on the (x,px) section ...");
+        puts("Calculating bounds of energy surface's intersection on the surface of section ...");
         
         vector<double> xpx_energybounds = get_energybounds_sosatyw(E);
+        int succ  = funcM_xpx_2dof(xRes, yRes, xpx_energybounds, tau);
         // cout << xpx_energybounds[3] << endl;
+        
+        // vector<double> ypy_energybounds = get_energybounds_sosatx0(E);
+        // int succ  = funcM_ypy_2dof(xRes, yRes, ypy_energybounds, tau);
 
-        int succ  = funcM_2dof(xRes, yRes, xpx_energybounds, tau);
     }
     else if (argc == 2){ 
     // Obtain trajectory and function M for initial conditions from a file
@@ -146,15 +172,15 @@ int main(int argc, char *argv[]){
         int xRes = stoi(argv[1]);
         int yRes = stoi(argv[2]);
         double tau = stod(argv[3]);
-        puts("Calculating bounds of energy surface's intersection on the (x,px) section ...");
+        puts("Calculating bounds of energy surface's intersection on the surface of section ...");
         
         vector<double> xpx_energybounds = get_energybounds_sosatyw(E);
+        int succ  = funcM_xpx_2dof(xRes, yRes, xpx_energybounds, tau);
         // cout << xpx_energybounds[3] << endl;
 
-        int succ  = funcM_2dof(xRes, yRes, xpx_energybounds, tau);
-
-        // int succ  = funcM_2dof(xRes, yRes, xpx_energybounds, tau);
-    }    
+        // vector<double> ypy_energybounds = get_energybounds_sosatx0(E);
+        // int succ  = funcM_ypy_2dof(xRes, yRes, ypy_energybounds, tau);
+    }       
     else {
         puts("Incorrect number of inputs, exiting program");
         exit(GSL_FAILURE);
@@ -250,6 +276,83 @@ void Hderiv_fdf (double x, void *params, double *y, double *dy)
     *dy = (2.0*pow(LAMBDA,2.0)*D_X*exp(-LAMBDA * x)*(exp(-LAMBDA * x) - LAMBDA*(1 - exp(-LAMBDA * x))) - pow((ZETA * LAMBDA),2.0)*exp(-ZETA * LAMBDA * x));
 }
 
+
+double quadratic_y (double y, void *params)
+{
+    struct quadratic_y_params *p = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    return (E - ( (Vdagger/pow(YW,4.0))*pow(y,2.0)*( pow(y,2.0) - 2.0*pow(YW,2.0) ) + EPSILON_S));
+}
+
+double quadratic_y_deriv (double y, void *params)
+{
+    struct quadratic_y_params *p = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    return -( (Vdagger/pow(YW,4.0))*4.0*(pow(y,3.0) - pow(YW,2.0)*y) );
+}
+
+void quadratic_y_fdf (double y, void *params, double *x, double *dx)
+{
+    struct quadratic_y_params *p
+        = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    *x = (E - ( (Vdagger/pow(YW,4.0))*pow(y,2.0)*( pow(y,2.0) - 2.0*pow(YW,2.0) ) + EPSILON_S));
+    *dx = -( (Vdagger/pow(YW,4.0))*4.0*(pow(y,3.0) - pow(YW,2.0)*y) );
+}
+
+double Hderiv_y (double y, void *params)
+{
+    struct quadratic_y_params *p = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    return ( (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0)) + EPSILON_S );
+}
+
+
+double Hderiv_y_deriv (double y, void *params)
+{
+    struct quadratic_y_params *p = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    return ( (Vdagger/pow(YW,4.0))*4.0*(pow(y,3.0) - y*pow(YW,2.0)) );
+}
+
+void Hderiv_y_fdf (double y, void *params, double *x, double *dx)
+{
+    struct quadratic_y_params *p
+        = (struct quadratic_y_params *) params;
+
+    double E = p->E;
+    double Vdagger = p->Vdagger; 
+    double YW = p->YW;
+    double EPSILON_S = p->EPSILON_S;
+
+    *x = ( (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0)) + EPSILON_S );
+    *dx = ( (Vdagger/pow(YW,4.0))*4.0*(pow(y,3.0) - y*pow(YW,2.0)) );
+}
 
 
 /*
@@ -394,12 +497,155 @@ double deleonberne_get_py(double x, double y, double px, double E){
     return py;
 
 }
+
+
+/*
+Energy surface's intersection with the SOS at y = yw 
+*/
+vector<double> get_energybounds_sosatx0(double E){
+
+    double yMin = get_ybound_sosatx0(E, -2.0);
+    double yMax = get_ybound_sosatx0(E, 2.0);
+    printf("y-bounds %15.12f \t %15.12f \n", yMin, yMax);
+
+    double pyMin = 0, pyMax = 0;
+
+    vector<double> ypy_bounds(4);
+
+    // Now solve for the maximum px-coordinate
+    pyMax = get_pymax_sosatx0(E, 1.5);
+    pyMin = -pyMax; // due to symmetry about py = 0 axis
+    printf("py-bounds %15.12f \t %15.12f \n", pyMin, pyMax);
+
+    ypy_bounds[0] = yMin;
+    ypy_bounds[1] = yMax;
+    ypy_bounds[2] = pyMin;
+    ypy_bounds[3] = pyMax;
+
+    return ypy_bounds;
+}
+
+
+double get_pymax_sosatx0(double E, double guess_ycoord){
+
+    int status;
+    int iter = 0, max_iter = 10;
+    const gsl_root_fdfsolver_type *T;
+    gsl_root_fdfsolver *s;
+    double y0, y = guess_ycoord;
+    gsl_function_fdf FDF;
+    struct quadratic_y_params params = {E, Vdagger, YW, EPSILON_S};
+
+    FDF.f = &Hderiv_y;
+    FDF.df = &Hderiv_y_deriv;
+    FDF.fdf = &Hderiv_y_fdf;
+    FDF.params = &params;
+
+    T = gsl_root_fdfsolver_newton;
+    s = gsl_root_fdfsolver_alloc (T);
+    gsl_root_fdfsolver_set (s, &FDF, y);
+
+    
+    // printf ("using %s method\n", gsl_root_fdfsolver_name (s));
+
+    // printf ("%-5s %10s\n","iter", "root");
+
+    do
+        {
+        status = gsl_root_fdfsolver_iterate (s);
+        y0 = y;
+        y = gsl_root_fdfsolver_root (s);
+        status = gsl_root_test_delta (y, y0, 0, 1e-3);
+
+        if (status == GSL_SUCCESS){
+            // printf ("Converged:\n");
+            // printf("x coordinate that solves dHdx(x,yw, 0,0) for guess %5.2f is %15.12f \n", guess_xcoord, x);
+        }
+
+        // printf ("%5d %15.12f \n", iter, x);
+        iter++;
+        }
+        while (status == GSL_CONTINUE && iter < max_iter);
+    
+
+    gsl_root_fdfsolver_free (s);
+
+
+    double pyMax = sqrt(2*MASS_B*(E - ( (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0)) + EPSILON_S )));
+
+    return pyMax;  
+}
+
+double get_ybound_sosatx0(double E, double guess_ycoord){
+
+    int status;
+    int iter = 0, max_iter = 10;
+    const gsl_root_fdfsolver_type *T;
+    gsl_root_fdfsolver *s;
+    double x0, x = guess_ycoord;
+    gsl_function_fdf FDF;
+    struct quadratic_y_params params = {E, Vdagger, YW, EPSILON_S};
+
+    FDF.f = &quadratic_y;
+    FDF.df = &quadratic_y_deriv;
+    FDF.fdf = &quadratic_y_fdf;
+    FDF.params = &params;
+
+    T = gsl_root_fdfsolver_newton;
+    s = gsl_root_fdfsolver_alloc (T);
+    gsl_root_fdfsolver_set (s, &FDF, x);
+
+    
+    // printf ("using %s method\n", gsl_root_fdfsolver_name (s));
+
+    // printf ("%-5s %10s\n","iter", "root");
+
+    do
+        {
+        status = gsl_root_fdfsolver_iterate (s);
+        x0 = x;
+        x = gsl_root_fdfsolver_root (s);
+        status = gsl_root_test_delta (x, x0, 0, 1e-3);
+
+        if (status == GSL_SUCCESS){
+            // printf ("Converged:\n");
+            // printf("x coordinate that solves H(x,yw, 0,0) for guess %5.2f is %15.12f \n", guess_xcoord, x);
+        }
+
+        // printf ("%5d %15.12f \n", iter, x);
+        iter++;
+        }
+        while (status == GSL_CONTINUE && iter < max_iter);
+    
+
+    gsl_root_fdfsolver_free (s);
+
+    return x;  
+}
+
+/*
+Obtain one of the momenta coordinate based on given values of other coordinates on the constant energy surface
+*/
+double deleonberne_get_px(double x, double y, double py, double E){
+
+    double px = 0;
+    double deleonberne_pot = D_X*pow((1 - exp(-LAMBDA*x)),2.0) + (Vdagger/pow(YW,4.0))*pow(y,2.0)*(pow(y,2.0) - 2.0*pow(YW,2.0))*exp(-ZETA*LAMBDA*x) + EPSILON_S;
+
+    if (E >= (deleonberne_pot + (1/(2.0*MASS_A))*pow(px,2.0)))
+        px = -sqrt( 2.0*MASS_A*(E - (deleonberne_pot + (1/(2.0*MASS_B))*pow(py,2.0)) ) );
+    else{
+        px = NAN;
+        // cout << "vy isn't real!" j<< endl;
+    }
+    return px;
+
+}
    
 
 /*
 * Lagrangian descriptors for 2 DOF system (4D phase space) 
 */
-int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
+int funcM_xpx_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
 
     // Limits of the (x,px) at one fixed coordinate E = 1.010
     // double xMin = -0.300; 
@@ -423,10 +669,10 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
     // double yMax = 5.000;
 
     // Fatten the domain to compute LD
-    double xMin = xpx_energybounds[0] + 0.01*xpx_energybounds[0]; 
-    double xMax = xpx_energybounds[1] + 0.01*xpx_energybounds[1];
-    double yMin = xpx_energybounds[2] + 0.01*xpx_energybounds[2];
-    double yMax = xpx_energybounds[3] + 0.01*xpx_energybounds[3];;
+    double xMin = xpx_energybounds[0] + 0.02*xpx_energybounds[0]; 
+    double xMax = xpx_energybounds[1] + 0.02*xpx_energybounds[1];
+    double yMin = xpx_energybounds[2] + 0.02*xpx_energybounds[2];
+    double yMax = xpx_energybounds[3] + 0.02*xpx_energybounds[3];;
     double ySlice = YW;
     cout << xMin << " " << xMax << " " << yMin << " " << yMax << endl;
 
@@ -526,6 +772,7 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
             }
             else {
                 init_cond[3] = momenta;
+                // init_cond[2] = momenta;
             
                 // Solve for forward trajectory 
                 // Integrate from t_0 to t_0 + tau to obtain forward function M
@@ -610,6 +857,198 @@ int funcM_2dof(int xRes, int yRes, vector<double> xpx_energybounds, double tau){
     return GSL_SUCCESS;
 }
 
+
+/*
+* Lagrangian descriptors for 2 DOF system (4D phase space) 
+*/
+int funcM_ypy_2dof(int xRes, int yRes, vector<double> ypy_energybounds, double tau){
+
+    // Fatten the domain to compute LD
+    double xMin = ypy_energybounds[0] + 0.02*ypy_energybounds[0]; 
+    double xMax = ypy_energybounds[1] + 0.02*ypy_energybounds[1];
+    double yMin = ypy_energybounds[2] + 0.02*ypy_energybounds[2];
+    double yMax = ypy_energybounds[3] + 0.02*ypy_energybounds[3];;
+    double xSlice = 0.0;
+    cout << xMin << " " << xMax << " " << yMin << " " << yMax << endl;
+
+    // Limits of the (x,px) at one fixed coordinate E = 1.510, Fig. 3B2
+    // double xMin = -0.250; 
+    // double xMax = 0.280;
+    // double yMin = -5.000;
+    // double yMax = 5.000;
+    // double ySlice = YW;
+
+    // Limits of the (x,px) at one fixed coordinate E = 1.510, Fig. 3C2
+    // double xMin = -0.240; 
+    // double xMax = 0.200;
+    // double yMin = -5.200;
+    // double yMax = 5.200;
+    // double ySlice = YW;
+
+
+    // double xMin = -0.680; 
+    // double xMax = 2.700;
+    // double yMin = -12.100;
+    // double yMax = 12.100;
+    // double ySlice = YW; 
+
+    int ic_id;
+
+    double q1, q2, p1, p2; // 2-DOF
+    double lam = 1;
+
+    // Define domain parameters: (x,y) -> (x, px)
+    // int xRes = 100;
+    // int yRes = 100;
+    double delta_x = (xMax - xMin)/xRes;
+    double delta_y = (yMax - yMin)/yRes;
+    // double delta_x = 0.0025;
+    // double delta_y = 0.0025; 
+    // int xRes = (xMax - xMin)/delta_x;
+    // int yRes = (yMax - yMin)/delta_y;
+    // cout << delta_x << " " << delta_y << endl;
+    cout << "Total initial conditions: "<< (xRes + 1)*(yRes + 1) << endl;
+
+
+    // Function M integration parameters
+    double t0 = 0;
+    // double tau = 50.0;
+    double delta_t = 1e-2; // change this time step for speed and for more accurate event location and escape time 
+    // int dim = 2
+
+    vector<double> time_interval(2);
+    
+    cout << "Integration time span: " << tau << endl;
+    // 2D array to store grid resolution and function M
+    vector<vector<double> > xMesh(yRes+1, vector<double>(xRes+1));
+    vector<vector<double> > yMesh(yRes+1, vector<double>(xRes+1));
+    vector<vector<double> > forwM(yRes+1, vector<double>(xRes+1));
+    vector<vector<double> > backM(yRes+1, vector<double>(xRes+1));
+    // vector<vector<double> > M(yRes+1, vector<double>(xRes+1));
+    // vector<vector<double> > Et(yRes+1, vector<double>(xRes+1));
+
+    
+    vector<double> init_cond(dim);
+
+    // Writing domain and LD parameters
+    ofstream params_dataOut;
+    params_dataOut.open("params_deleonberne_M" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + ".txt", ofstream::out | ofstream::trunc);
+
+    params_dataOut << std::fixed << std::setprecision(5) << setw(5) << xMin << "\t" << xMax << "\t" << delta_x << "\t" << yMin << "\t" << yMax << "\t" << delta_y << "\t" << t0 << "\t" << tau << "\t" << delta_t << "\t" << E << "\n";
+
+    params_dataOut.close();
+
+    
+    clock_t timer;
+    timer = clock();
+    for (int i = 0; i < yRes + 1; i++){
+        for (int j = 0; j < xRes + 1; j++){
+            
+            ic_id = i*(xRes + 1) + j;
+            // cout << ic_id << endl;
+            // cout << init_cond[0] << "\t" << init_cond[2] << endl;
+
+            xMesh[i][j] = init_cond[0];
+            yMesh[i][j] = init_cond[2];
+
+            // 2-DOF: Generate the other two coordinates using the constraint that the LD is being computed on a section and energy is conserved
+            init_cond[0] = xSlice;
+            init_cond[1] = xMin + j*delta_x;
+            init_cond[3] = yMin + i*delta_y;
+            init_cond[4] = 0; // initialize the value of 
+            double momenta = deleonberne_get_px(init_cond[0], init_cond[1], init_cond[3], E);
+            if (isnan(momenta)){
+                forwM[i][j] = NAN;
+                backM[i][j] = NAN;
+                // M[i][j] = NAN;
+                // Et[i][j] = NAN;
+                // puts("Not on the energy surface");
+            }
+            else {
+                init_cond[2] = momenta;
+            
+                // Solve for forward trajectory 
+                // Integrate from t_0 to t_0 + tau to obtain forward function M
+                double M_forw = 0;
+                double escape_timeF = t0 + tau;
+                time_interval[0] = t0;
+                time_interval[1] = t0 + tau;
+                M_forw = gsl_integrate(time_interval, init_cond, delta_t, ic_id);
+                // gsl_LD_escape(time_interval, init_cond, delta_t, ic_id, M_forw, escape_timeF);
+
+                // Solve for backward trajectory
+                // Integrate from t_0 to t_0 - tau to obtain backward function M
+                double M_back = 0;
+                double escape_timeB = t0 - tau;
+                time_interval[0] = t0;
+                time_interval[1] = t0 - tau;
+                M_back = gsl_integrate(time_interval, init_cond, -delta_t, ic_id);
+                // gsl_LD_escape(time_interval, init_cond, -delta_t, ic_id, M_back, escape_timeB);
+
+                // cout << M_forw << " " << M_back << endl;
+                // cout << escape_timeB << " " << escape_timeF << endl;
+
+                // Save the forward and backward separately
+                forwM[i][j] = M_forw;
+                backM[i][j] = M_back;
+
+                // Sum forward and backward and save as an array
+                // M[i][j] = M_forw + M_back;
+                // Et[i][j] = escape_timeF + fabs(escape_timeB);
+            }
+
+        }
+    }
+
+    timer = clock() - timer;
+    printf ("It took me %lf secs.\n",((double)timer)/CLOCKS_PER_SEC);
+
+
+    ofstream Mf_dataOut;
+    Mf_dataOut.open("deleonberne_forwM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + ".txt", ofstream::out | ofstream::trunc);
+    for (int i = 0; i < yRes + 1; i++){
+        for (int k = 0; k < xRes; k++)
+            Mf_dataOut << std::fixed << std::setprecision(15) << setw(15) << forwM[i][k] << "\t";
+
+        Mf_dataOut << std::fixed << std::setprecision(15) << setw(15) << forwM[i][xRes] << endl;
+    }
+    Mf_dataOut.close();
+
+    ofstream Mb_dataOut;
+    Mb_dataOut.open("deleonberne_backM" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + "_E" + to_string(float(E)) + ".txt", ofstream::out | ofstream::trunc);
+    for (int i = 0; i < yRes + 1; i++){
+        for (int k = 0; k < xRes; k++)
+            Mb_dataOut << std::fixed << std::setprecision(15) << setw(15) << backM[i][k] << "\t";
+
+        Mb_dataOut << std::fixed << std::setprecision(15) << setw(15) << backM[i][xRes] << endl;
+    }
+    Mb_dataOut.close();
+
+
+    // Writing Lagrangian Descriptor data
+    // ofstream M_dataOut;
+    // M_dataOut.open("deleonberne_M" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + ".txt", ofstream::out | ofstream::trunc);
+    // for (int i = 0; i < yRes + 1; i++){
+    //     for (int k = 0; k < xRes; k++)
+    //         M_dataOut << std::fixed << std::setprecision(15) << setw(15) << M[i][k] << "\t";
+
+    //     M_dataOut << std::fixed << std::setprecision(15) << setw(15) << M[i][xRes] << endl;
+    // }
+    // M_dataOut.close();
+
+    // Writing escape time data
+    // ofstream Et_dataOut;
+    // Et_dataOut.open("deleonberne_escape" + to_string(yRes) + "x" + to_string(xRes) + "_finalT" + to_string(float(t0 + tau)) + ".txt", ofstream::out | ofstream::trunc);
+    // for (int i = 0; i < xRes + 1; i++){
+    //     for (int k = 0; k < yRes; k++)
+    //         Et_dataOut << std::fixed << std::setprecision(15) << setw(15) << Et[i][k] << "\t";
+
+    //     Et_dataOut << std::fixed << std::setprecision(15) << setw(15) << Et[i][yRes] << endl;
+    // }
+    // Et_dataOut.close();
+
+    return GSL_SUCCESS;
+}
 
 double get_traj_funcM(vector<double> time_interval, vector<double> init_cond, int file_id){
 
@@ -1045,21 +1484,11 @@ int gsl_LD_escape(vector<double> time_interval, vector<double> init_cond, double
         // Saving trajectory to file
         // int succ = write_matrix(trajectory, tmax, mu, file_id);
 
-        if (y_start[1] < -8.0 || y_start[1] > -6.0 || y_start[0] > 6.5 || y_start[0] < 4.5) {
+        if (y_start[1] < -YW) {
             // puts("Escape event has occurred.");
             break;
-        } // E = 15.250
+        } // well isomer B
 
-        
-        // if (y_start[1] < -10.0 || y_start[1] > -5.0 || y_start[0] > 8.0 || y_start[0] < 3.0) {
-        //     // puts("Escape event has occurred.");
-        //     break;
-        // } // E = 16.250
-
-        // if (fabs(y_start[1]) > 10e3 || fabs(y_start[0]) > 10e3) {
-        //     // puts("Escape event has occurred.");
-        //     break;
-        // } // Escape to infinity
         
         k = k + 1;
         t_next = t_next + delta_t;
